@@ -1,0 +1,120 @@
+
+module: ietf-nrp
+  augment /nw:networks:
+    +--rw nrp-policies
+       +--rw nrp-policy* [name]
+          +--rw name                    string
+          +--rw nrp-id?                 uint32
+          +--rw mode?                   identityref
+          +--rw resource-reservation
+          |  +--rw preference?                        uint16
+          |  +--rw (max-bw-type)?
+          |     +--:(bw-value)
+          |     |  +--rw maximum-bandwidth?           uint64
+          |     +--:(bw-percentage)
+          |        +--rw maximum-bandwidth-percent?   rt-types:percentage
+          +--rw nrp-selector
+          |  +--rw (nrp-selector-type)?
+          |  |  +--:(ipv4-nrp-aware)
+          |  |  |  +--rw nrp-aware-destination-prefix*   inet:ipv4-prefix
+          |  |  +--:(ipv6)
+          |  |  |  +--rw (ipv6-selector-type)?
+          |  |  |     +--:(global-selector)
+          |  |  |     |  +--rw ipv6-hbh-eh?              uint32
+          |  |  |     +--:(nrp-aware)
+          |  |  |        +--rw destination-prefix*       inet:ipv6-prefix
+          |  |  |        +--rw srv6-sid*                 inet:ipv6-prefix
+          |  |  +--:(mpls)
+          |  |     +--rw (mpls-selector-type)?
+          |  |        +--:(global-selector)
+          |  |        +--:(nrp-aware)
+          |  +--rw acl-ref*                              nrp-acl-ref
+          +--rw qos-phb-profile-name?   string
+          +--rw nrp-topology
+             +--rw nrp-igp-congruent!
+             |  +--rw multi-topology-id?   uint32
+             |  +--rw algo-id?             uint32
+             |  +--rw sharing?             boolean
+             +--rw (topology-type)?
+                +--:(selection)
+                |  +--rw nrp-select-topology
+                |     +--rw nrp-topology-group* [group-id]
+                |        +--rw group-id                string
+                |        +--rw base-topology-ref
+                |        |  +--rw network-ref?   -> /nw:networks/network/network-id
+                |        +--rw links* [link-ref]
+                |        |  +--rw link-ref    -> /nw:networks/network[nw:network-id=current()/../../base-topology-ref/network-ref]/nt:link/link-id
+                |        +--rw resource-reservation
+                |        |  +--rw preference?                        uint16
+                |        |  +--rw (max-bw-type)?
+                |        |     +--:(bw-value)
+                |        |     |  +--rw maximum-bandwidth?           uint64
+                |        |     +--:(bw-percentage)
+                |        |        +--rw maximum-bandwidth-percent?   rt-types:percentage
+                |        +--rw link-partition-type?    identityref
+                +--:(filter)
+                   +--rw filters
+                      +--rw filter* [filter-ref]
+                         +--rw filter-ref              nrp-topo-filter-ref
+                         +--rw resource-reservation
+                         |  +--rw preference?                        uint16
+                         |  +--rw (max-bw-type)?
+                         |     +--:(bw-value)
+                         |     |  +--rw maximum-bandwidth?           uint64
+                         |     +--:(bw-percentage)
+                         |        +--rw maximum-bandwidth-percent?   rt-types:percentage
+                         +--rw nrp-selector
+                         |  +--rw (nrp-selector-type)?
+                         |  |  +--:(ipv4-nrp-aware)
+                         |  |  |  +--rw nrp-aware-destination-prefix*   inet:ipv4-prefix
+                         |  |  +--:(ipv6)
+                         |  |  |  +--rw (ipv6-selector-type)?
+                         |  |  |     +--:(global-selector)
+                         |  |  |     |  +--rw ipv6-hbh-eh?              uint32
+                         |  |  |     +--:(nrp-aware)
+                         |  |  |        +--rw destination-prefix*       inet:ipv6-prefix
+                         |  |  |        +--rw srv6-sid*                 inet:ipv6-prefix
+                         |  |  +--:(mpls)
+                         |  |     +--rw (mpls-selector-type)?
+                         |  |        +--:(global-selector)
+                         |  |        +--:(nrp-aware)
+                         |  +--rw acl-ref*                              nrp-acl-ref
+                         +--rw qos-phb-profile-name?   string
+  augment /nw:networks/nw:network/nw:network-types:
+    +--rw nrp!
+  augment /nw:networks/nw:network/nw:node:
+    +--ro nrp
+       +--ro nrp-aware-dp-id
+          +--ro nrp-dp-srv6?      srv6-types:srv6-sid
+          +--ro nrp-dp-sr-mpls?   rt-types:mpls-label
+  augment /nw:networks/nw:network/nt:link:
+    +--ro nrp
+       +--ro link-partition-type?   identityref
+       +--ro bandwidth-value?       uint64
+       +--ro nrp-aware-dp-id
+       |  +--ro nrp-dp-srv6?      srv6-types:srv6-sid
+       |  +--ro nrp-dp-sr-mpls?   rt-types:mpls-label
+       +--ro statistics
+          +--ro admin-status?                  te-types:te-admin-status
+          +--ro oper-status?                   te-types:te-oper-status
+          +--ro one-way-available-bandwidth?   rt-types:bandwidth-ieee-float32
+          +--ro one-way-utilized-bandwidth?    rt-types:bandwidth-ieee-float32
+          +--ro one-way-min-delay?             uint32
+          +--ro one-way-max-delay?             uint32
+          +--ro one-way-delay-variation?       uint32
+          +--ro one-way-packet-loss?           decimal64
+  augment /nw:networks/nw:network/nw:node:
+    +--ro nrps* [nrp-id]
+       +--ro nrp-id    uint32
+       +--ro nrp
+          +--ro nrp-aware-dp-id
+             +--ro nrp-dp-srv6?      srv6-types:srv6-sid
+             +--ro nrp-dp-sr-mpls?   rt-types:mpls-label
+  augment /nw:networks/nw:network/nt:link:
+    +--ro nrps* [nrp-id]
+       +--ro nrp-id                 uint32
+       +--ro link-partition-type?   identityref
+       +--ro bandwidth-value?       uint64
+       +--ro nrp-aware-dp-id
+          +--ro nrp-dp-srv6?      srv6-types:srv6-sid
+          +--ro nrp-dp-sr-mpls?   rt-types:mpls-label
