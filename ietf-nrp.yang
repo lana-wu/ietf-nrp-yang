@@ -85,6 +85,10 @@ module ietf-nrp {
       "RFC XXX: A YANG Data Model for Network Resource Partition";
   }
 
+  /*
+   * I D E N T I T I E S
+   */
+
   identity nrp-partition-mode {
     description
       "Base identity for nrp partition type.";
@@ -125,33 +129,34 @@ module ietf-nrp {
       "Identity for queue partition type.";
   }
 
-  identity nrp-dataplane-type {
+  /*
+   * Identity:
+   * MPLS Selector Label Position.
+   */
+
+  identity selector-mpls-label-position {
     description
-      "Base identity for NRP data plane type.";
+      "Base identity for the position of the MPLS selector label.";
   }
 
-  identity nrp-dataplane-ipv6 {
-    base nrp-dataplane-type;
+  identity selector-mpls-label-position-top {
+    base selector-mpls-label-position;
     description
-      "Identity for NRP specific packet forwarding of IPv6.";
+      "MPLS selector label is at the top of the label stack.";
   }
 
-  identity nrp-dataplane-mpls {
-    base nrp-dataplane-type;
+  identity selector-mpls-label-position-bottom {
+    base selector-mpls-label-position;
     description
-      "Identity for NRP specific packet forwarding of MPLS.";
+      "MPLS selector label is either at the bottom or at a specific
+       offset from the bottom of the label stack.";
   }
 
-  identity nrp-dataplane-sr-mpls {
-    base nrp-dataplane-type;
+  identity selector-mpls-label-position-indicator {
+    base selector-mpls-label-position;
     description
-      "Identity for NRP specific packet forwarding of SR MPLS.";
-  }
-
-  identity nrp-dataplane-srv6 {
-    base nrp-dataplane-type;
-    description
-      "Identity for NRP specific packet forwarding of SRv6.";
+      "MPLS selector is preceded by a special purpose
+       indicator label in the label stack.";
   }
 
   /*
@@ -216,131 +221,108 @@ module ietf-nrp {
   }
 
   /*
-   * Grouping - NRP Selector
+   * G R O U P I N G S
+   */
+  /*
+   * Grouping - MPLS selector label location specific fields
    */
 
-  grouping nrp-selector {
+  grouping nrp-selector-mpls-label-location {
     description
-      "Grouping for NRP Selector.";
-    container nrp-selector {
+      "Grouping for MPLS FAS label location specific fields.";
+    leaf label-position {
+      type identityref {
+        base selector-mpls-label-position;
+      }
+      description
+        "MPLS selector label position.";
+    }
+    leaf label-position-offset {
+      when "derived-from-or-self(../label-position,"
+         + "'nrp:selector-mpls-label-position-bottom')" {
+        description
+          "MPLS label position offset is relevant only when the
+           label-position is set to 'bottom'.";
+      }
+      type uint8;
+      description
+        "MPLS label position offset.";
+    }
+  }
+
+  /*
+   * Grouping - NRP Selector Configuration
+   */
+
+  grouping nrp-selector-config {
+    description
+      "Grouping for NRP selector configuration.";
+    container selector {
       description
         "Container for NRP selector.";
-      choice nrp-selector-type {
+      container ipv4 {
         description
-          "Container for NRP Selector.";
-        case ipv4-nrp-aware {
+          "Container for IPv4 NRP selector.";
+        leaf-list destination-prefix {
+          type inet:ipv4-prefix;
           description
-            "Container for IPv4 selector.";
-          leaf-list nrp-aware-destination-prefix {
-            type inet:ipv4-prefix;
-            description
-              "Any prefix from the specified set of IPv4
-               destination prefixes can be the selector.";
-          }
+            "Any prefix from the specified set of IPv4
+             destination prefixes can be the selector.";
         }
-        case ipv6 {
+      }
+      container ipv6 {
+        description
+          "Container for IPv6 NRP selector.";
+        choice selector-type {
           description
-            "Container for IPv6 selector.";
-          choice ipv6-selector-type {
-            description
-              "Choices for IPv6 selector type.";
-            case global-selector {
-              leaf ipv6-hbh-eh {
-                type uint32;
-                description
-                  "The selector value carried in Hop-by-Hop
-                   Option of IPv6 extension header.";
-              }
-            }
-            case nrp-aware {
-              leaf-list destination-prefix {
-                type inet:ipv6-prefix;
-                description
-                  "Any prefix from the specified set of IPv6
-                   destination prefixes can be the selector.";
-              }
-              leaf-list srv6-sid {
-                type inet:ipv6-prefix;
-                description
-                  "Any prefix from the specified set of SRv6
-                   SID can be the selector.";
-              }
+            "Choices for IPv6 selector type.";
+          case dedicated {
+            leaf ipv6-hbh-eh {
+              type uint32;
+              description
+                "The selector value carried in Hop-by-Hop
+                 Option of IPv6 extension header.";
             }
           }
-        }
-        /* mpls needs more work, the reference drafts to be add */
-        case mpls {
-          description
-            "Container for MPLS as a selector.";
-          choice mpls-selector-type {
-            description
-              "Choices for MPLS as a selector.";
-            case global-selector {
-              /*		  
-                      choice specification-type {
-                        description
-                          "Choices for MPLS label specification.";
-              
-                        case derived {
-                          leaf forwarding-label {
-                            type empty;
-                            description
-                              "MPLS selector Label is derived from
-                               forwarding label.";
-                          }
-                        }
-              
-                        case explicit {
-                          leaf label {
-                            type rt-types:mpls-label;
-                            description
-                              "MPLS selector Label is explicitly
-                               specified.";
-                          }
-                          uses mpls-label-location;
-                        }
-               
-                      }
-               */			
+          case srv6-sid-derived {
+            leaf-list srv6-sid {
+              type inet:ipv6-prefix;
+              description
+                "Any SID from the specified set of SRv6
+                 SID can be the selector.";
             }
-            case nrp-aware {
-              /*
-                      list label-range {
-                        key "index";
-                        unique "start-label end-label";
-                        description
-                          "Any label from the specified set of MPLS label
-                           ranges can be used as the selector.";
-                        leaf index {
-                          type string;
-                          description
-                            "A string that uniquely identifies a label
-                             range.";
-                        }
-                        leaf start-label {
-                          type rt-types:mpls-label;
-                          must '. <= ../end-label' {
-                            error-message
-                              "The start-label must be less than or equal "
-                            + "to end-label";
-                          }
-                          description
-                            "Label-range start.";
-                        }
-                        leaf end-label {
-                          type rt-types:mpls-label;
-                          must '. >= ../start-label' {
-                            error-message
-                              "The end-label must be greater than or equal "
-                            + "to start-label";
-                          }
-                          description
-                            "Label-range end.";
-                        }
-                        uses mpls-label-location;
-              
-                      }
-               */
+          }
+          case ipv6-destination-derived {
+            leaf-list destination-prefix {
+              type inet:ipv6-prefix;
+              description
+                "Any prefix from the specified set of IPv6
+                 destination prefixes can be the selector.";
+            }
+          }
+        }
+      }
+      container mpls {
+        description
+          "Container for MPLS NRP selector.";
+        choice selector-type {
+          description
+            "Choices for MPLS label specification.";
+          case dedicated {
+            leaf label {
+              type rt-types:mpls-label;
+              description
+                "MPLS selector Label is explicitly
+                 specified.";
+            }
+            uses nrp-selector-mpls-label-location;
+          }
+          case derived {
+            leaf forwarding-label {
+              type empty;
+              description
+                "MPLS selector Label is derived from
+                 forwarding label.";
             }
           }
         }
@@ -360,7 +342,7 @@ module ietf-nrp {
   grouping nrp-qos-phb-profile {
     description
       "Grouping for NRP QoS PHB profile.";
-    leaf qos-phb-profile-name {
+    leaf phb-profile {
       type string;
       description
         "PHB profile identifier.";
@@ -374,7 +356,7 @@ module ietf-nrp {
   grouping nrp-igp-congruent {
     description
       "Grouping for NRP IGP congruent attributes.";
-    container nrp-igp-congruent {
+    container igp-congruent {
       presence "indicates NRP IGP congruent";
       description
         "The presence of the container node indicates NRP IGP
@@ -422,7 +404,7 @@ module ietf-nrp {
              list of global topology filters.";
         }
         uses nrp-resource-reservation;
-        uses nrp-selector;
+        uses nrp-selector-config;
         uses nrp-qos-phb-profile;
       }
     }
@@ -435,10 +417,10 @@ module ietf-nrp {
   grouping nrp-select-topology {
     description
       "NRP topology specified by selection.";
-    container nrp-select-topology {
+    container select {
       description
         "The container of NRP select topology.";
-      list nrp-topology-group {
+      list topology-group {
         key "group-id";
         description
           "List of groups for NRP topology elements (node or links)
@@ -476,6 +458,7 @@ module ietf-nrp {
           description
             "Indicates the resource reservation type of an NRP link.";
         }
+        uses nrp-qos-phb-profile;
       }
     }
   }
@@ -487,7 +470,7 @@ module ietf-nrp {
   grouping nrp-topology {
     description
       "Grouping for NRP topology.";
-    container nrp-topology {
+    container topology {
       description
         "Container for NRP topology.";
       uses nrp-igp-congruent;
@@ -541,7 +524,7 @@ module ietf-nrp {
              or hybrid partition.";
         }
         uses nrp-resource-reservation;
-        uses nrp-selector;
+        uses nrp-selector-config;
         uses nrp-qos-phb-profile;
         uses nrp-topology;
       }
@@ -549,34 +532,32 @@ module ietf-nrp {
   }
 
   /*
-   * Grouping - NRP aware node attributes
+   * Grouping - NRP Selector State
    */
 
-  grouping nrp-aware-id {
+  grouping nrp-selector-state {
     description
-      "The grouping of NRP aware dataplane ID.";
-    container nrp-aware-dp-id {
+      "The grouping of NRP selector.";
+    container selector {
       config false;
       description
-        "The container of NRP data plane identifier.";
-      leaf nrp-dp-srv6 {
+        "The container of NRP selector.";
+      leaf srv6 {
         type srv6-types:srv6-sid;
         description
-          "Indicates the SRv6 SID value as the NRP data plane
-           identifier.";
+          "Indicates the SRv6 SID value as the NRP selector.";
       }
-      leaf nrp-dp-sr-mpls {
+      leaf sr-mpls {
         type rt-types:mpls-label;
         description
-          "Indicates the SR MPLS ID value as the NRP data plane
-           identifier.";
+          "Indicates the SR MPLS ID value as the NRP selector.";
       }
     }
   }
 
   /*
-   * Grouping - NRP Node Attributes
-   */  
+   * Grouping - NRP node attributes
+   */
 
   grouping nrp-node-attributes {
     description
@@ -585,7 +566,7 @@ module ietf-nrp {
       config false;
       description
         "Containing NRP attributes.";
-      uses nrp-aware-id;
+      uses nrp-selector-state;
     }
   }
 
@@ -593,9 +574,9 @@ module ietf-nrp {
    * Grouping - NRP Link Attributes
    */    
 
-  grouping nrp-link-states {
+  grouping nrp-link-attributes {
     description
-      "NRP link scope states.";
+      "NRP link scope attributes.";
     leaf link-partition-type {
       type identityref {
         base nrp-link-partition-type;
@@ -611,7 +592,7 @@ module ietf-nrp {
       description
         "Bandwidth allocation for the NRP as absolute value.";
     }
-    uses nrp-aware-id;
+    uses nrp-selector-state;
   }
 
   /*
@@ -729,7 +710,7 @@ module ietf-nrp {
       config false;
       description
         "Containing NRP attributes.";
-      uses nrp-link-states;
+      uses nrp-link-attributes;
       uses nrp-statistics-per-link;
     }
   }
@@ -761,7 +742,7 @@ module ietf-nrp {
 
   augment "/nw:networks/nw:network/nt:link" {
     description
-      "Augment link with NRP aware attributes.";
+      "Augment link with NRP attributes.";
     list nrps {
       key "nrp-id";
       config false;
@@ -772,7 +753,7 @@ module ietf-nrp {
         description
           "NRP identifier";
       }
-      uses nrp-link-states;
+      uses nrp-link-attributes;
     }
   }
 }
